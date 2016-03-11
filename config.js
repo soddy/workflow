@@ -6,6 +6,7 @@ module.exports = {
     serverStartPath: '',
     serverReloadDelay: 500,
     replaceCssUrl: 'css/',
+    verFlag: true,  //是否给js css添加随机版本号
     jsSuffix: '.es6',
     imgLimit: 10240,
     cleanFile: [

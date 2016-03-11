@@ -1,4 +1,5 @@
-﻿workflow v1.0.0
+﻿workflow v1.1.0
+更新10之后
 
 1.先安装 	npm install -g gulp
 	npm install -g webpack
@@ -20,3 +21,7 @@
 9.config.js->imgLimit 为css中将图片转换为二进制流的大小，默认为10*1024k
 
 10.config.js->jsSuffix 为js目录中逻辑js文件的后缀，可以为es6,js等，如果编辑器支持es6语法，那用.js也可以
+
+11.config.js->verFlag 是否给js css添加随机版本号，用于清除缓存，如果页面有loading，不建议使用，true为添加版本号，false为不添加
+
+12.gulp create 命令创建项目

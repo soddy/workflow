@@ -1,3 +1,5 @@
-let userController = require('../controllers/userController.es6');
-let a = 'a';
-console.log(a);
+let subController = require('../controllers/subController.es6');
+        $(function(){
+            $('#indexController').html('indexController');
+            subController.init();
+        });

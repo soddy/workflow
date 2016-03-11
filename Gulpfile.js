@@ -14,6 +14,10 @@ var distHtmlFlag=0,
     distLibFlag=0,
     distCommonFlag=0;
 var rd;
+var fs = require('fs');
+var readline = require('readline');
+var download = require('download');
+var create = require('./create.js');
 var config = require('./config.js');
 var gulp = require('gulp');
 var sass = require('gulp-ruby-sass');
@@ -189,14 +193,22 @@ gulp.task('dev', ['clean'], function(){
 gulp.task('dist_html', function() {
     var htmlSrc = config.srcPath + '*.html',
         htmlDist = config.distPath + '';
-    gulp.src(htmlSrc)
-        .pipe(replace('.js', '.js?r='+rd))
-        .pipe(replace('.css', '.css?r='+rd))
-        .pipe(replace('.jpg', '.jpg?r='+rd))
-        .pipe(replace('.png', '.png?r='+rd))
-        .pipe(replace('.gif', '.gif?r='+rd))
-        .pipe(replace(/<!--css start-->([\s\S]*?)<!--css end-->/g, '<link href="'+ config.replaceCssUrl +'index.min.css?r='+rd+'" rel="stylesheet"/>'))
-        .pipe(gulp.dest(htmlDist));
+    if(config.verFlag){
+        gulp.src(htmlSrc)
+            .pipe(replace('.js?r', '.js?r='+rd))
+            .pipe(replace('.css?r', '.css?r='+rd))
+            .pipe(replace('.jpg', '.jpg?r='+rd))
+            .pipe(replace('.png', '.png?r='+rd))
+            .pipe(replace('.gif', '.gif?r='+rd))
+            .pipe(replace(/<!--css start-->([\s\S]*?)<!--css end-->/g, '<link href="'+ config.replaceCssUrl +'index.min.css?r='+rd+'" rel="stylesheet"/>'))
+            .pipe(gulp.dest(htmlDist));
+    }else{
+        gulp.src(htmlSrc)
+            .pipe(replace('.js?r', '.js'))
+            .pipe(replace('.css?r', '.css'))
+            .pipe(replace(/<!--css start-->([\s\S]*?)<!--css end-->/g, '<link href="'+ config.replaceCssUrl +'index.min.css" rel="stylesheet"/>'))
+            .pipe(gulp.dest(htmlDist));
+    }
     distHtmlFlag = 1;
     console.log('html files are builded!');
 });
@@ -231,32 +243,54 @@ gulp.task('dist_img', function () {
 gulp.task('dist_css', function(){
     var cssSrc = config.srcPath + 'css/*.scss',
         cssDist = config.distPath + 'css/';
-    sass(cssSrc)
-        .pipe(base64({
-            extensions: ['png', 'jpg'],
-            maxImageSize: 10*1024,
-            debug: true
-        }))
-        .pipe(replace('.jpg', '.jpg?r='+rd))
-        .pipe(replace('.png', '.png?r='+rd))
-        .pipe(concat('index.css'))
-        .pipe(rename({ suffix: '.min' }))
-        .pipe(minifycss())
-        .pipe(gulp.dest(cssDist));
+    if(config.verFlag){
+        sass(cssSrc)
+            .pipe(base64({
+                extensions: ['png', 'jpg'],
+                maxImageSize: 10*1024,
+                debug: true
+            }))
+            .pipe(replace('.jpg', '.jpg?r='+rd))
+            .pipe(replace('.png', '.png?r='+rd))
+            .pipe(concat('index.css'))
+            .pipe(rename({ suffix: '.min' }))
+            .pipe(minifycss())
+            .pipe(gulp.dest(cssDist));
+    }else{
+        sass(cssSrc)
+            .pipe(base64({
+                extensions: ['png', 'jpg'],
+                maxImageSize: 10*1024,
+                debug: true
+            }))
+            .pipe(concat('index.css'))
+            .pipe(rename({ suffix: '.min' }))
+            .pipe(minifycss())
+            .pipe(gulp.dest(cssDist));
+    }
     distCssFlag = 1;
     console.log('css files are builded!');
 });
 // js index
 gulp.task('dist_index', function() {
-    webpack(webpackDistConfig, null, function(){
-        distIndexFlag = 1;
-        console.log('index.min.js file is builded!');
-    })
-        .pipe(replace('.jpg','.jpg?r='+rd))
-        .pipe(replace('.png','.png?r='+rd))
-        .pipe(replace('.gif','.gif?r='+rd))
-        .pipe(uglify())
-        .pipe(gulp.dest(config.distPath + 'js'));
+    if(config.verFlag) {
+        webpack(webpackDistConfig, null, function () {
+            distIndexFlag = 1;
+            console.log('index.min.js file is builded!');
+        })
+            .pipe(replace('.jpg', '.jpg?r=' + rd))
+            .pipe(replace('.png', '.png?r=' + rd))
+            .pipe(replace('.gif', '.gif?r=' + rd))
+            .pipe(uglify())
+            .pipe(gulp.dest(config.distPath + 'js'));
+    }else{
+        webpack(webpackDistConfig, null, function () {
+            distIndexFlag = 1;
+            console.log('index.min.js file is builded!');
+        })
+            .pipe(uglify())
+            .pipe(gulp.dest(config.distPath + 'js'));
+    }
 });
 // js lib
 gulp.task('dist_lib', function(){
@@ -299,4 +333,120 @@ gulp.task('zip', ['dist_clean'], function(){
             }
         },1000);
     },200);
+});
+
+// gulp create object
+gulp.task('create', function(){
+    var rl = readline.createInterface({
+        input: process.stdin,
+        output: process.stdout
+    });
+    var srcDir = './src';
+    var cssDir = srcDir + '/css';
+    var imagesDir = srcDir + '/images';
+    var jsDir = srcDir + '/js';
+    var jsAppDir = srcDir + '/js/app';
+    var jsCommonDir = srcDir + '/js/common';
+    var jsControllersDir = srcDir + '/js/controllers';
+    var jsLibDir = srcDir + '/js/lib';
+    var jsModelsDir = srcDir + '/js/models';
+    var publicDir = srcDir + '/public';
+    fs.exists(srcDir, function(e){
+        //如果目录存在就删除，如果不存在就创建
+        if(e){
+            rl.question('项目目录已经存在，是否要删除，删除后不能恢复，有一定风险，是请输入yes，否请输入任意字符！ ', function(answer) {
+                if(answer == 'yes'){
+                    rl.question('再次确认是否要删除？是请输入yes，否请输入任意字符！ ', function(answer) {
+                        if(answer == 'yes'){
+                            deleteFolderRecursive(srcDir, srcDir, function(e){
+                                console.log('项目源文件已删除！');
+                                mkdir();
+                                rl.close();
+                            });
+                        }else{
+                            rl.close();
+                        }
+                    });
+                }else{
+                    rl.close();
+                }
+            });
+        }else{
+            mkdir();
+        }
+    });
+    function mkdir(){
+        fs.mkdir(srcDir, function(e){
+            fs.mkdir(cssDir, function(e){
+                console.log(cssDir + ' is created!');
+                fs.writeFile(cssDir + '/index.scss', create.css.indexCss, function(err){
+                    console.log(cssDir + '/index.scss is created!');
+                });
+                fs.writeFile(cssDir + '/sub.scss', create.css.subCss, function(err){
+                    console.log(cssDir + '/sub.scss is created!');
+                });
+            });
+            fs.mkdir(imagesDir, function(e){
+                console.log(imagesDir + ' is created!');
+            });
+            fs.mkdir(jsDir, function(e){
+                fs.mkdir(jsAppDir, function(e){
+                    console.log(jsAppDir + ' is created!');
+                    fs.writeFile(jsAppDir + '/index.es6', create.js.indexJs, function(err){
+                        console.log(jsAppDir + '/index.es6 is created!');
+                    });
+                });
+                fs.mkdir(jsCommonDir, function(e){
+                    console.log(jsCommonDir + ' is created!');
+                    new download({mode: '777'})
+                        .get('http://code.jquery.com/jquery-1.12.1.min.js')
+                        .dest(jsCommonDir)
+                        .run(function(err, files){
+                            console.log(jsCommonDir + ' jquery file is created!');
+                        });
+                });
+                fs.mkdir(jsControllersDir, function(e){
+                    console.log(jsControllersDir + ' is created!');
+                    fs.writeFile(jsControllersDir + '/subController.es6', create.js.subJs, function(err){
+                        console.log(jsControllersDir + '/subController.es6 is created!');
+                    });
+                });
+                fs.mkdir(jsLibDir, function(e){
+                    console.log(jsLibDir + ' is created!');
+                });
+                fs.mkdir(jsModelsDir, function(e){
+                    console.log(jsModelsDir + ' is created!');
+                });
+                console.log(jsDir + ' is created!');
+            });
+            fs.mkdir(publicDir, function(e){
+                console.log(publicDir + ' is created!');
+            });
+            console.log(srcDir + ' is created!');
+            fs.writeFile(srcDir + '/index.html', create.html, function(err){
+                console.log(srcDir + '/index.html is created!');
+            });
+        });
+        rl.close();
+    }
+    function deleteFolderRecursive(path, srcDir, cb) {
+        var files = [];
+        if( fs.existsSync(path) ) {
+            files = fs.readdirSync(path);
+            files.forEach(function(file,index){
+                var curPath = path + "/" + file;
+                if(fs.statSync(curPath).isDirectory()) { // recurse
+                    deleteFolderRecursive(curPath, srcDir);
+                } else { // delete file
+                    fs.unlinkSync(curPath);
+                }
+            });
+            fs.rmdirSync(path);
+            if(path == srcDir){
+                cb(function(){
+                    return 1;
+                }());
+            }
+        }
+    };
 });
